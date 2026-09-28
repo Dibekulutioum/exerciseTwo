@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="b9ccada7-0680-4f7f-bf76-af7a449ddf64" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Tsion1985" database="emp_data" />
+	</db:config>
+	<flow name="craft_emp_Flow_Sel" doc:id="4e74be74-0b71-4997-b2e7-e9fa2d6d0838" >
+		<http:listener doc:name="Listener" doc:id="6a232074-6af9-4282-925a-ee0f49852792" config-ref="HTTP_Listener_config" path="/selectEmp" allowedMethods="GET"/>
+		<logger level="INFO" doc:name="Logger" doc:id="0e6ec73d-7440-40ba-a5be-e29533ac2db2" />
+		<db:select doc:name="Select" doc:id="c174fcaa-d611-467c-ab0e-079518346c3b" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM craft_emp]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="6432d7d9-cb8e-4ee0-ba3d-8274191a1e4d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map(value) -> {
+employee_name:upper(value.e_name),
+employee_salary:value.e_salary,
+employee_age:value.e_age,
+profile_image:value.p_image,
+SSN:"****" ++ (value.ssn as String)[-3 to -1],
+Company:value.company
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-payload value='#[payload]' doc:name="Set Payload" doc:id="e9a17bc6-03ff-45ac-9d2c-3e1e82b1b2e6" />
+	</flow>
+	<flow name="craft_emp_Flow_Ins" doc:id="9459f606-bc6e-40ba-b78d-a6bfa5715e40" >
+		<http:listener doc:name="Listener" doc:id="0f672cb2-3e47-4a8b-b165-6292ea64d85f" config-ref="HTTP_Listener_config" path="/insertEmp" allowedMethods="POST"/>
+		<logger level="INFO" doc:name="Logger" doc:id="49f9abdf-b7bd-4bfb-8de0-38a9d80d6666" />
+		<db:insert doc:name="Insert" doc:id="76257a53-fd3b-4574-9434-eb8c46928489" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO craft_emp(e_name,e_salary,e_age,p_image,ssn,company) 
+VALUES(:employee_name,:employee_salary,:employee_age,:profile_image,:SSN,:Company)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+"employee_name": payload.employee_name,
+"employee_salary": payload.employee_salary,
+"employee_age": payload.employee_age,
+"profile_image": payload.profile_image,
+"SSN": payload.SSN,
+"Company": payload.Company
+}]]]></db:input-parameters>
+		</db:insert>
+		<set-payload value='#["Data inserted"]' doc:name="Set Payload" doc:id="75f9d9dd-bff8-4020-9555-c4ede29aa183" />
+	</flow>
+</mule>
